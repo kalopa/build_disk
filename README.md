@@ -13,14 +13,6 @@ These are as follows:
 5. Unpack the tarball and run the install script.
 6. Save the new root filesystem, ready for deployment.
 
-* mkroot.sh - Create the raw RoboBSD image.
-* mkapp.sh - Produce the tarball and FAT filesystem.
-* collect.sh - Collect all of the various components into rootfs.
-* fixer.sh - Run the QEMU emulator and manually perform the steps.
-
-* install.sh - Script to be executed in the emulated system.
-* rootfs - Directory of configuration files and packages.
-
 ## Build Steps
 
 To build a root image, run this command:
