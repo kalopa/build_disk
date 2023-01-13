@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+
+# PROVIDE: god
+# REQUIRE: DAEMON
+
+. /etc/rc.subr
+
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+
+name="god"
+rcvar="${name}_enable"
+command="/usr/local/bin/god"
+
+status_cmd='${command} status'
+stop_cmd='${command} terminate'
+
+load_rc_config "$name"
+: ${god_config="/etc/${name}.conf"}
+
+command_args="-c ${god_config}"
+required_files="${god_config}"
+run_rc_command "$1"

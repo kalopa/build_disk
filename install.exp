@@ -1,0 +1,54 @@
+#!/usr/bin/expect -f
+
+#Usage install.expect <root_path> <config_path>
+
+set timeout 300
+
+spawn /usr/bin/qemu-system-i386 -nographic -m 2048 -drive file=[lindex $argv 0],format=raw -drive file=[lindex $argv 1],format=raw
+
+send_user "Waiting for image to boot..."
+stty -echo
+expect {
+	"login:" { send "robobsd\r" }
+	timeout { puts "\n\nVM failed to boot!\n"; exit 1 }
+}
+
+sleep 2
+set timeout 5
+expect {
+	"Password:" { send "vagrant\r" }
+	timeout { puts "\n\nFailed to get a password prompt!\n"; exit 1 }
+}
+
+expect {
+	"FreeBSD" { send "\r" }
+	timeout { puts "\n\nFailed to log in to VM!\n"; exit 1 }
+}
+
+expect {
+	"$ " { send "sudo -s\r" }
+	timeout { puts "\n\nFailed to get to a shell prompt!\n"; exit 1 }
+}
+send_user "\n\nLogged in, mounting config filesystem...\n"
+expect {
+	"# " { send "mount -t msdosfs /dev/ada1 /mnt\r" }
+	timeout { puts "\n\nsudo failed!\n"; exit 1 }
+}
+
+set timeout 900
+send_user "\n\nRunning build/install...\n"
+expect {
+	"# " { send "/mnt/INSTALL.SH\r" }
+	timeout { puts "\n\nmount failed!\n"; exit 1 }
+}
+
+set timeout 300
+expect {
+	"# " { send "shutdown -p now\r" }
+	timeout { puts "\n\nInstallation script failure!\n"; exit 1 }
+}
+send_user "\n\nShutting down the VM and terminating.\n"
+expect {
+	"Please press any key to reboot." { send "\x01x\r" }
+	timeout { puts "\n\nShutdown failed!\n"; exit 1 }
+}
