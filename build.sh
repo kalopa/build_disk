@@ -63,12 +63,20 @@ gem fetch --silent \
 	god:0.13.7
 mv *.gem $ROOTFS/app/tmp
 
-#
-# Pull the SGSLIB gem from local sources
-echo ">> Copying SGSLIB gem to $ROOTFS..."
-(cd ../sgslib && git pull)
-sgs_path=$(cd ../sgslib && rake build | sed 's/.* built to //' | sed 's/\.$//')
-cp ../sgslib/$sgs_path $ROOTFS/app/tmp
+if [ -d ../sgslib ]
+then
+	#
+	# Pull the SGSLIB gem from local sources
+	echo ">> Copying SGSLIB gem to $ROOTFS..."
+	(cd ../sgslib && git pull)
+	sgs_path=$(cd ../sgslib && rake build | sed 's/.* built to //' | sed 's/\.$//')
+	cp ../sgslib/$sgs_path $ROOTFS/app/tmp
+else
+	#
+	# Install the latest release of SGSLIB
+	gem fetch --silent sgslib
+	cp sgslib*.gem $ROOTFS/app/tmp
+fi
 
 #
 # Copy a mission file into place
