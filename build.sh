@@ -41,7 +41,7 @@ then
 fi
 
 echo ">> Preparing RoboBSD QCOW image for QEMU..."
-rm -f $sim_disk
+rm -f $OUTPUT
 qemu-img create -f qcow2 -F raw -b $root_disk $OUTPUT
 
 echo ">> Copying default files to $ROOTFS..."
