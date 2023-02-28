@@ -2,6 +2,6 @@ version: "2"
 
 services:
   build_disk:
-    image: registry.kalopa.net/build_disk:latest
+    image: registry.kalopa.net/build_disk:1.0
     build:
       context: .

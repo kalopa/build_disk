@@ -1,1 +1,4 @@
-rootfs
+build.log
+docker_run.sh
+missions
+tmp
