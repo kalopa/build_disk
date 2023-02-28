@@ -6,22 +6,21 @@
 #
 set -e
 
-: ${BSDIR=$HOME/bsdisk}
-: ${MISSION=missions/current}
+: ${DISK=/disk}
+: ${MISSION=/missions/mission.yaml}
+: ${OUTPUT=$DISK/simulate.qcow}
 
-ROOTFS=$BSDIR/rootfs
-IMGDIR=$BSDIR/images
+ROOTFS=$DISK/rootfs
+IMGDIR=$DISK/images
 
 image="robobsd.alix.img.gz"
 base_file="$IMGDIR/$image"
-root_disk="$BSDIR/root_disk.img"
-sim_disk="$BSDIR/simulate.qcow"
+root_disk="$DISK/root_disk.img"
 
 echo "***** Generate a new RoboBSD (QCOW) disk image *****"
 
 sudo rm -rf $ROOTFS
 mkdir -p \
-	$BSDIR \
 	$IMGDIR \
 	$ROOTFS/app/bin \
 	$ROOTFS/app/log \
@@ -43,7 +42,7 @@ fi
 
 echo ">> Preparing RoboBSD QCOW image for QEMU..."
 rm -f $sim_disk
-qemu-img create -f qcow2 -F raw -b $root_disk $sim_disk
+qemu-img create -f qcow2 -F raw -b $root_disk $OUTPUT
 
 echo ">> Copying default files to $ROOTFS..."
 cp -r files/cfg $ROOTFS
@@ -98,25 +97,25 @@ echo ">> Making a FAT configuration file system..."
 #
 # Create and mount the FAT file system
 echo ">> Generating a FAT file system"
-mkdir -p $BSDIR/mnt
-dd if=/dev/zero bs=1024k count=100 of=$BSDIR/config_fs.raw
-mkfs.fat $BSDIR/config_fs.raw
-sudo mount -o loop $BSDIR/config_fs.raw $BSDIR/mnt
+mkdir -p $DISK/mnt
+dd if=/dev/zero bs=1024k count=100 of=$DISK/config_fs.raw
+mkfs.fat $DISK/config_fs.raw
+sudo mount -o loop $DISK/config_fs.raw $DISK/mnt
 
 #
 # Build the tarball
 echo ">> Installing our packages onto the FAT fs"
-sudo cp files/install.sh $BSDIR/mnt/INSTALL.SH
-sudo tar czf $BSDIR/mnt/FILES.TGZ -C $BSDIR/rootfs .
+sudo cp files/install.sh $DISK/mnt/INSTALL.SH
+sudo tar czf $DISK/mnt/FILES.TGZ -C $DISK/rootfs .
 
 #
 # Now unmount the file system.
 sync; sync; sync
-sudo umount $BSDIR/mnt
-rm -rf $BSDIR/mnt
+sudo umount $DISK/mnt
+rm -rf $DISK/mnt
 
 echo ">> Booting the kernel to install the custom bits..."
-/usr/bin/expect ./install.exp $sim_disk $BSDIR/config_fs.raw
+/usr/bin/expect ./install.exp $OUTPUT $DISK/config_fs.raw
 
-echo "***** Your simulation image is: $sim_disk *****"
+echo "***** Your simulation image is: $OUTPUT *****"
 exit 0
