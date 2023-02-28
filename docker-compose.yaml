@@ -1,0 +1,7 @@
+version: "2"
+
+services:
+  build_disk:
+    image: registry.kalopa.net/build_disk:latest
+    build:
+      context: .

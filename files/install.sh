@@ -3,7 +3,7 @@
 # Running on a vanilla RoboBSD system, install the various files
 # needed for the boat.
 #
-set -e
+set -ex
 
 echo ">> Perform initial steps prior to unpacking tarball."
 cd /
@@ -54,6 +54,7 @@ cp /etc/ssh/ssh_host_* /cfg/ssh
 mv /cfg/device.hints /boot
 chown root:wheel /boot/device.hints
 chmod 444 /boot/device.hints
+cat /boot/device.hints
 
 echo ">> Operation completed successfully!"
 exit 0

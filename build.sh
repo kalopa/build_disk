@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Build a generic root file system based on the Kalopa RoboBSD image. This
 # image doesn't have any specific boat data or applications, so those
@@ -7,36 +7,45 @@
 set -e
 
 : ${BSDIR=$HOME/bsdisk}
+: ${MISSION=missions/current}
+
 ROOTFS=$BSDIR/rootfs
 IMGDIR=$BSDIR/images
 
 image="robobsd.alix.img.gz"
-local_file="$IMGDIR/$image"
+base_file="$IMGDIR/$image"
+root_disk="$BSDIR/root_disk.img"
+sim_disk="$BSDIR/simulate.qcow"
 
-echo "***** PHASE I - Generate a new RoboBSD disk image *****"
+echo "***** Generate a new RoboBSD (QCOW) disk image *****"
 
-mkdir -p $BSDIR $ROOTFS $IMGDIR
-if [ ! -s $local_file ]
-then
-	echo ">> Downloading a RoboBSD disk image from Kalopa..."
-	curl -Lo $local_file https://kalopa.com/download/robobsd/$image
-fi
-
-echo ">> Preparing RoboBSD image for QEMU..."
-rm -f $BSDIR/root_disk.img
-gunzip < $local_file > $BSDIR/root_disk.img
-
-
-echo "***** PHASE II - Create a configuration image *****"
-
-echo ">> Copying default files to $ROOTFS..."
 sudo rm -rf $ROOTFS
-mkdir -p $ROOTFS/app/bin \
+mkdir -p \
+	$BSDIR \
+	$IMGDIR \
+	$ROOTFS/app/bin \
 	$ROOTFS/app/log \
 	$ROOTFS/app/rc.d \
 	$ROOTFS/app/tmp \
 	$ROOTFS/cfg
 
+if [ ! -s $root_disk -o $root_disk -ot $base_file ]
+then
+	if [ ! -s $base_file ]
+	then
+		echo ">> Downloading a RoboBSD disk image from Kalopa..."
+		curl -Lo $base_file https://kalopa.com/download/robobsd/$image
+	fi
+	echo ">> Uncompressing root (base) disk image..."
+	rm -f $root_disk
+	gunzip < $base_file > $root_disk
+fi
+
+echo ">> Preparing RoboBSD QCOW image for QEMU..."
+rm -f $sim_disk
+qemu-img create -f qcow2 -F raw -b $root_disk $sim_disk
+
+echo ">> Copying default files to $ROOTFS..."
 cp -r files/cfg $ROOTFS
 sudo chown 0:0 $ROOTFS $ROOTFS/app
 sudo chown -R 0:0 $ROOTFS/app/bin $ROOTFS/app/log $ROOTFS/app/rc.d $ROOTFS/cfg
@@ -50,18 +59,19 @@ rm -rf $ROOTFS/app/tmp/gps_time/.git
 #
 # Pull all the required gems
 echo ">> Downloading/copying Ruby gems to $ROOTFS..."
-gem fetch --silent \
-	io-console:0.5.7 \
-	reline:0.3.1 \
-	irb:1.3.5 \
-	redis:4.7.1 \
-	serialport:1.3.2 \
-	msgpack:1.5.2 \
-	json:2.6.3 \
-	securerandom:0.1.0 \
-	yaml:0.1.1 \
-	god:0.13.7
-mv *.gem $ROOTFS/app/tmp
+(cd $ROOTFS/app/tmp && \
+	gem fetch io-console -v 0.6.0 && \
+	gem fetch reline -v 0.3.2 && \
+	gem fetch irb -v 1.6.2 && \
+	gem fetch connection_pool -v 2.3.0 && \
+	gem fetch redis-client -v 0.12.2 && \
+	gem fetch redis -v 5.0.6 && \
+	gem fetch serialport -v 1.3.2 && \
+	gem fetch msgpack -v 1.6.0 && \
+	gem fetch json -v 2.6.3 && \
+	gem fetch securerandom -v 0.2.2 && \
+	gem fetch yaml -v 0.2.1 && \
+	gem fetch god -v 0.13.7)
 
 if [ -d ../sgslib ]
 then
@@ -74,17 +84,16 @@ then
 else
 	#
 	# Install the latest release of SGSLIB
-	gem fetch --silent sgslib
-	cp sgslib*.gem $ROOTFS/app/tmp
+	(cd $ROOTFS/app/tmp && gem fetch --silent sgslib)
 fi
 
 #
 # Copy a mission file into place
 echo ">> Copying mission file to $ROOTFS..."
-echo "Mission: $(grep title: missions/current | sed 's/.*title://')"
-sudo cp missions/current $ROOTFS/app/mission.yaml
+echo "Mission: $(grep title: $MISSION | sed 's/.*title://')"
+sudo cp $MISSION $ROOTFS/app/mission.yaml
 
-echo "***** PHASE III - Make a FAT configuration file system *****"
+echo ">> Making a FAT configuration file system..."
 
 #
 # Create and mount the FAT file system
@@ -106,16 +115,8 @@ sync; sync; sync
 sudo umount $BSDIR/mnt
 rm -rf $BSDIR/mnt
 
-echo "***** PHASE IV - Boot the system to perform configuration steps *****"
+echo ">> Booting the kernel to install the custom bits..."
+/usr/bin/expect ./install.exp $sim_disk $BSDIR/config_fs.raw
 
-/usr/bin/expect ./install.exp $BSDIR/root_disk.img $BSDIR/config_fs.raw
-
-fmt <<EOF
-**********
-
-Now save the file $BSDIR/root_disk.img as an SGS disk image. You are
-ready to run a simulation using boatsim...
-
-**********
-EOF
+echo "***** Your simulation image is: $sim_disk *****"
 exit 0

@@ -4,10 +4,10 @@
 
 set timeout 300
 
-spawn /usr/bin/qemu-system-i386 -nographic -m 2048 -drive file=[lindex $argv 0],format=raw -drive file=[lindex $argv 1],format=raw
+spawn /usr/bin/qemu-system-i386 -nographic -m 2048 -drive file=[lindex $argv 0],format=qcow2 -drive file=[lindex $argv 1],format=raw
 
 send_user "Waiting for image to boot..."
-stty -echo
+#stty -echo
 expect {
 	"login:" { send "robobsd\r" }
 	timeout { puts "\n\nVM failed to boot!\n"; exit 1 }
